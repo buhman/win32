@@ -29,6 +29,7 @@ IDirect3DVertexBuffer9 * g_pVB = NULL;
 IDirect3DVertexDeclaration9 * g_pVertexDeclaration = NULL;
 ID3DXConstantTable * g_pConstantTable = NULL;
 IDirect3DVertexShader9 * g_pVertexShader = NULL;
+IDirect3DPixelShader9 * g_pPixelShader = NULL;
 
 IDirectInput8 * g_pDI = NULL;
 IDirectInputDevice8 * g_pdiDevice;
@@ -149,6 +150,7 @@ void Render()
 
   g_pd3dDevice->SetVertexDeclaration(g_pVertexDeclaration);
   g_pd3dDevice->SetVertexShader(g_pVertexShader);
+  g_pd3dDevice->SetPixelShader(g_pPixelShader);
 
   g_pd3dDevice->SetStreamSource(0, g_pVB, 0, (sizeof (CUSTOMVERTEX)));
   g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
@@ -371,6 +373,31 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   pCode->Release();
   if(FAILED(res)) {
     fprintf(stderr, "CreateVertexShader\n");
+    return 0;
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // pixel shader
+  //////////////////////////////////////////////////////////////////////
+
+  res = D3DXCompileShaderFromFile(L"main.psh", // pSrcFile
+                                  NULL, // pDefines
+                                  NULL, // pInclude
+                                  "Main", // pFunctionName
+                                  "ps_3_0", // pProfile
+                                  dwShaderFlags, // Flags
+                                  &pCode, // ppShader
+                                  NULL, // ppErrorMsgs
+                                  &g_pConstantTable // ppConstantTable
+                                  );
+  if (FAILED(res)) {
+    fprintf(stderr, "D3DXCompileShader\n");
+    return 0;
+  }
+  res = g_pd3dDevice->CreatePixelShader((DWORD*)pCode->GetBufferPointer(), &g_pPixelShader);
+  pCode->Release();
+  if(FAILED(res)) {
+    fprintf(stderr, "CreatePixelShader\n");
     return 0;
   }
 

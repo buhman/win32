@@ -16,7 +16,8 @@ VS_OUTPUT Main(VS_INPUT Input)
 {
   VS_OUTPUT Output;
 
-  Output.Position = mul(float4(Input.Position, 1.0), mWorldViewProj);
+  //Output.Position = mul(float4(Input.Position, 1.0), mWorldViewProj);
+  Output.Position = float4(Input.Position, 1.0);
   Output.Diffuse = Input.Color;
 
   return Output;
