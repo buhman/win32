@@ -3,6 +3,7 @@
 #include <d3dx9.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <dinput.h>
 
 struct CUSTOMVERTEX
 {
@@ -24,6 +25,9 @@ IDirect3DVertexBuffer9 * g_pVB = NULL;
 IDirect3DVertexDeclaration9 * g_pVertexDeclaration = NULL;
 ID3DXConstantTable * g_pConstantTable = NULL;
 IDirect3DVertexShader9 * g_pVertexShader = NULL;
+
+IDirectInput8 * g_pDI = NULL;
+IDirectInputDevice8 * g_pdiDevice;
 
 HRESULT InitDirect3D(HWND hwnd)
 {
@@ -48,6 +52,50 @@ HRESULT InitDirect3D(HWND hwnd)
 
   g_pd3dDevice->SetRenderState( D3DRS_CULLMODE, D3DCULL_NONE );
   g_pd3dDevice->SetRenderState( D3DRS_LIGHTING, FALSE );
+
+  return S_OK;
+}
+
+BOOL CALLBACK EnumDevicesCallback(const DIDEVICEINSTANCE * pdidInstance,
+                                  void * pvRef)
+{
+  HRESULT hr;
+
+  hr = g_pDI->CreateDevice(pdidInstance->guidInstance, &g_pdiDevice, NULL );
+  if( FAILED(hr) )
+    return DIENUM_CONTINUE;
+
+  return DIENUM_STOP;
+}
+
+HRESULT InitDirectInput(HINSTANCE hInstance)
+{
+  HRESULT hr;
+
+  hr = DirectInput8Create(hInstance,
+                          DIRECTINPUT_VERSION,
+                          IID_IDirectInput8,
+                          (void **)&g_pDI,
+                          NULL);
+  if (FAILED(hr))
+    return hr;
+
+  hr = g_pDI->EnumDevices(DI8DEVCLASS_GAMECTRL,
+                          EnumDevicesCallback,
+                          NULL,
+                          DIEDFL_ATTACHEDONLY);
+  if (FAILED(hr))
+    return hr;
+
+  if (g_pdiDevice == NULL) {
+    fprintf(stderr, "no game controller found\n");
+    fflush(stderr);
+    return E_FAIL;
+  }
+
+  hr = g_pdiDevice->SetDataFormat(&c_dfDIJoystick);
+  if (FAILED(hr))
+    return hr;
 
   return S_OK;
 }
@@ -103,8 +151,59 @@ void Render()
   g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
 }
 
+HRESULT UpdateInput()
+{
+  HRESULT hr;
+
+  hr = g_pdiDevice->Poll();
+  if (FAILED(hr)) {
+    hr = g_pdiDevice->Acquire();
+    while (hr == DIERR_INPUTLOST)
+      hr = g_pdiDevice->Acquire();
+    return S_OK;
+  }
+
+  DIJOYSTATE js;
+
+  g_pdiDevice->GetDeviceState((sizeof (DIJOYSTATE)), &js);
+
+  printf("[lx %ld] ", js.lX); // left stick
+  printf("[ly %ld] ", js.lY);
+  printf("[lz %ld] ", js.lZ); // trigger
+  printf("[lrx %ld] ", js.lRx); // right stick
+  printf("[lry %ld] ", js.lRy);
+  printf("[lrz %ld] ", js.lRz); // zero
+
+  printf("[pov %ld] ", js.rgdwPOV[0]);
+  static int max = -1;
+  for (int i = 0; i < 8; i++) {
+    if (js.rgbButtons[i] != 0 && i > max) {
+      max = i;
+    }
+  }
+  printf("[max %d] ", max);
+  printf("\n");
+  fflush(stdout);
+
+  return S_OK;
+}
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+  HRESULT hr;
+  hr = InitDirectInput(hInstance);
+  if (FAILED(hr))
+    return 0;
+
+  if (0) {
+    while (true) {
+      hr = UpdateInput();
+      if (FAILED(hr))
+        return 0;
+      Sleep(100);
+    }
+  }
+
   const wchar_t CLASS_NAME[] = L"Sample Window Class";
 
   WNDCLASS wc = {};
