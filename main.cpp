@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <dinput.h>
+#include <dsound.h>
+#include <assert.h>
+
+#include <comdef.h>
 
 struct CUSTOMVERTEX
 {
@@ -28,6 +32,8 @@ IDirect3DVertexShader9 * g_pVertexShader = NULL;
 
 IDirectInput8 * g_pDI = NULL;
 IDirectInputDevice8 * g_pdiDevice;
+
+IDirectSound8 * g_pDS = NULL;
 
 HRESULT InitDirect3D(HWND hwnd)
 {
@@ -188,14 +194,78 @@ HRESULT UpdateInput()
   return S_OK;
 }
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+HRESULT InitDirectSound(HWND hwnd)
 {
   HRESULT hr;
-  hr = InitDirectInput(hInstance);
-  if (FAILED(hr))
-    return 0;
 
+  hr = DirectSoundCreate8(NULL,
+                          &g_pDS,
+                          NULL);
+  if (FAILED(hr)) {
+    fprintf(stderr, "DirectSoundCreate8\n");
+    return hr;
+  }
+
+  hr = g_pDS->SetCooperativeLevel(hwnd, DSSCL_PRIORITY);
+  if (FAILED(hr)) {
+    fprintf(stderr, "SetCooperativeLevel\n");
+    return hr;
+  }
+
+  LPDIRECTSOUNDBUFFER pDsb = NULL;
+
+  WAVEFORMATEX wfx;
+  wfx.wFormatTag = WAVE_FORMAT_PCM;
+  wfx.nChannels = 2;
+  wfx.nSamplesPerSec = 44100;
+  wfx.nBlockAlign = 4;
+  wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
+  wfx.wBitsPerSample = 16;
+
+  DSBUFFERDESC desc = {};
+  desc.dwSize = (sizeof (DSBUFFERDESC));
+  desc.dwFlags = DSBCAPS_CTRLPAN | DSBCAPS_CTRLVOLUME | DSBCAPS_CTRLFREQUENCY;
+  desc.dwBufferBytes = 4 * wfx.nAvgBytesPerSec;
+  desc.guid3DAlgorithm = DS3DALG_DEFAULT;
+  desc.lpwfxFormat = &wfx;
+
+  hr = g_pDS->CreateSoundBuffer(&desc, &pDsb, NULL);
+  if (FAILED(hr)) {
+    fprintf(stderr, "CreateSoundBuffer\n");
+    _com_error err(hr);
+    LPCTSTR errMsg = err.ErrorMessage();
+    fprintf(stderr, "%ls\n", errMsg);
+    fflush(stderr);
+    return hr;
+  }
+
+  void * pBuffer;
+  DWORD dwBufferSize;
+
+  pDsb->Lock(0, desc.dwBufferBytes,
+             &pBuffer, &dwBufferSize,
+             NULL, NULL, 0);
+
+  FILE * fp = fopen("shire.pcm", "rb");
+  assert(fp != NULL);
+  fread(pBuffer, 1, dwBufferSize, fp);
+  fclose(fp);
+
+  pDsb->Unlock(pBuffer, dwBufferSize, NULL, 0);
+
+  pDsb->Play(0, 0, DSBPLAY_LOOPING);
+
+  while (1);
+}
+
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+{
   if (0) {
+    HRESULT hr;
+    hr = InitDirectInput(hInstance);
+    if (FAILED(hr))
+      return 0;
+
     while (true) {
       hr = UpdateInput();
       if (FAILED(hr))
@@ -228,6 +298,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   if (hwnd == NULL) {
     return 0;
   }
+
+  InitDirectSound(hwnd);
+  return 0;
 
   if (!SUCCEEDED(InitDirect3D(hwnd)))
     return 0;
