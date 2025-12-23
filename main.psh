@@ -1,9 +1,16 @@
+sampler2D BearTextureSampler;
+
 struct VS_OUTPUT
 {
   float4 Position   : POSITION;   // vertex position
   float4 Diffuse    : COLOR0;     // vertex diffuse color
+  float2 Texture    : TEXCOORD0;
 };
 
 float4 Main(VS_OUTPUT In) : COLOR {
-  return float4(1, 1, 1, 1) - In.Diffuse;
+  //return float4(1, 1, 1, 1) - In.Diffuse;
+  //return float4(In.Texture, 0, 1);
+  float2 tex = In.Texture * 0.5 + 0.5;
+
+  return tex2D(BearTextureSampler, float2(tex.x, 1.0 - tex.y));
 }

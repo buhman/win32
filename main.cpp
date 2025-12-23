@@ -27,9 +27,11 @@ IDirect3D9 * g_pD3D = NULL;
 IDirect3DDevice9 * g_pd3dDevice = NULL;
 IDirect3DVertexBuffer9 * g_pVB = NULL;
 IDirect3DVertexDeclaration9 * g_pVertexDeclaration = NULL;
-ID3DXConstantTable * g_pConstantTable = NULL;
+ID3DXConstantTable * g_pVertexConstantTable = NULL;
 IDirect3DVertexShader9 * g_pVertexShader = NULL;
+ID3DXConstantTable * g_pPixelConstantTable = NULL;
 IDirect3DPixelShader9 * g_pPixelShader = NULL;
+IDirect3DTexture9 * g_pTexture = NULL;
 
 IDirectInput8 * g_pDI = NULL;
 IDirectInputDevice8 * g_pdiDevice;
@@ -146,11 +148,16 @@ void Render()
   g_pd3dDevice->BeginScene();
 
   D3DXMATRIX mWorldViewProj = WorldViewProjection();
-  g_pConstantTable->SetMatrix(g_pd3dDevice, "mWorldViewProj", &mWorldViewProj);
+  g_pVertexConstantTable->SetMatrix(g_pd3dDevice, "mWorldViewProj", &mWorldViewProj);
 
   g_pd3dDevice->SetVertexDeclaration(g_pVertexDeclaration);
   g_pd3dDevice->SetVertexShader(g_pVertexShader);
   g_pd3dDevice->SetPixelShader(g_pPixelShader);
+
+  g_pd3dDevice->SetTexture(0, g_pTexture);
+  g_pd3dDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+  g_pd3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+  g_pd3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
 
   g_pd3dDevice->SetStreamSource(0, g_pVB, 0, (sizeof (CUSTOMVERTEX)));
   g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
@@ -301,8 +308,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     return 0;
   }
 
-  InitDirectSound(hwnd);
-  return 0;
+  if (0) {
+    InitDirectSound(hwnd);
+    return 0;
+  }
 
   if (!SUCCEEDED(InitDirect3D(hwnd)))
     return 0;
@@ -362,7 +371,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                                   dwShaderFlags, // Flags
                                   &pCode, // ppShader
                                   NULL, // ppErrorMsgs
-                                  &g_pConstantTable // ppConstantTable
+                                  &g_pVertexConstantTable // ppConstantTable
                                   );
   if (FAILED(res)) {
     fprintf(stderr, "D3DXCompileShader\n");
@@ -371,9 +380,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
   res = g_pd3dDevice->CreateVertexShader((DWORD*)pCode->GetBufferPointer(), &g_pVertexShader);
   pCode->Release();
-  if(FAILED(res)) {
+  if (FAILED(res)) {
     fprintf(stderr, "CreateVertexShader\n");
-    return 0;
+
+    _com_error err(res);
+    LPCTSTR errMsg = err.ErrorMessage();
+    fprintf(stderr, "errMsg: %ls\n", errMsg);
+    fflush(stderr);
+    return res;
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -388,7 +402,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                                   dwShaderFlags, // Flags
                                   &pCode, // ppShader
                                   NULL, // ppErrorMsgs
-                                  &g_pConstantTable // ppConstantTable
+                                  &g_pPixelConstantTable // ppConstantTable
                                   );
   if (FAILED(res)) {
     fprintf(stderr, "D3DXCompileShader\n");
@@ -396,12 +410,58 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   }
   res = g_pd3dDevice->CreatePixelShader((DWORD*)pCode->GetBufferPointer(), &g_pPixelShader);
   pCode->Release();
-  if(FAILED(res)) {
+  if (FAILED(res)) {
     fprintf(stderr, "CreatePixelShader\n");
-    return 0;
+
+    _com_error err(res);
+    LPCTSTR errMsg = err.ErrorMessage();
+    fprintf(stderr, "errMsg: %ls\n", errMsg);
+    fflush(stderr);
+    return res;
   }
 
-  //
+  //////////////////////////////////////////////////////////////////////
+  // texture
+  //////////////////////////////////////////////////////////////////////
+
+  res = g_pd3dDevice->CreateTexture(256,
+                                    256,
+                                    1,
+                                    0,
+                                    D3DFMT_A8R8G8B8,
+                                    D3DPOOL_MANAGED,
+                                    &g_pTexture,
+                                    NULL
+                                    );
+  if (FAILED(res)) {
+    fprintf(stderr, "CreateTexture\n");
+    return res;
+  }
+
+  D3DLOCKED_RECT rect;
+
+  res = g_pTexture->LockRect(0,
+                             &rect,
+                             NULL,
+                             0);
+  if (FAILED(res)) {
+    fprintf(stderr, "LockRect\n");
+    return res;
+  }
+  fprintf(stderr, "pitch %d\n", rect.Pitch);
+
+  FILE * fp = fopen("bear_a8r8g8b8.data", "rb");
+  assert(fp != NULL);
+  fread(rect.pBits, 1, 256 * 256 * 4, fp);
+  fclose(fp);
+
+  res = g_pTexture->UnlockRect(0);
+  if (FAILED(res)) {
+    fprintf(stderr, "UnlockRect\n");
+    return res;
+  }
+
+  //////////////////////////////////////////////////////////////////////
 
   fprintf(stderr, "success\n");
   fflush(stderr);
