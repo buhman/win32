@@ -32,6 +32,7 @@ IDirect3DVertexShader9 * g_pVertexShader = NULL;
 ID3DXConstantTable * g_pPixelConstantTable = NULL;
 IDirect3DPixelShader9 * g_pPixelShader = NULL;
 IDirect3DTexture9 * g_pTexture = NULL;
+D3DXCONSTANT_DESC g_TextureConstDesc;
 
 IDirectInput8 * g_pDI = NULL;
 IDirectInputDevice8 * g_pdiDevice;
@@ -154,10 +155,11 @@ void Render()
   g_pd3dDevice->SetVertexShader(g_pVertexShader);
   g_pd3dDevice->SetPixelShader(g_pPixelShader);
 
-  g_pd3dDevice->SetTexture(0, g_pTexture);
-  g_pd3dDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-  g_pd3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-  g_pd3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+  UINT registerIndex = g_TextureConstDesc.RegisterIndex;
+  g_pd3dDevice->SetTexture(registerIndex, g_pTexture);
+  g_pd3dDevice->SetSamplerState(registerIndex, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+  g_pd3dDevice->Setsamplerstate(registerIndex, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+  g_pd3dDevice->SetSamplerState(registerIndex, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
 
   g_pd3dDevice->SetStreamSource(0, g_pVB, 0, (sizeof (CUSTOMVERTEX)));
   g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
@@ -419,6 +421,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     fflush(stderr);
     return res;
   }
+
+  D3DXHANDLE handle;
+  handle = g_pPixelConstantTable->GetConstantByName(NULL, "BearTextureSampler");
+  assert(handle != NULL);
+
+  UINT count;
+  g_pPixelConstantTable->GetConstantDesc(handle, &g_TextureConstDesc, &count);
+  assert(g_TextureConstDesc.RegisterSet = D3DXRS_SAMPLER);
+  assert(count == 1);
 
   //////////////////////////////////////////////////////////////////////
   // texture

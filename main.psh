@@ -1,4 +1,4 @@
-sampler2D BearTextureSampler;
+sampler BearTextureSampler;
 
 struct VS_OUTPUT
 {
