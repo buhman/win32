@@ -14,7 +14,8 @@ CFLAGS += -Wno-error=unused-function
 CFLAGS += -Wno-error=unused-variable
 CFLAGS += -DUNICODE
 
-LDFLAGS += -Wl,--subsystem,windows -mwindows -mconsole -municode -ld3d9 -ld3dx9 -lwinmm -ldinput8 -ldxguid -ldsound -luuid
+# -Wl,--subsystem,windows
+LDFLAGS += -Wl,--subsystem,windows -municode -mconsole -mwindows -ld3d9 -ld3dx9 -lwinmm -ldinput8 -ldxguid -ldsound -luuid -static-libgcc
 
 OPT = -Og
 

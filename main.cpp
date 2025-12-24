@@ -6,8 +6,10 @@
 #include <dinput.h>
 #include <dsound.h>
 #include <assert.h>
+#include <io.h>
 
-#include <comdef.h>
+#define printf(...)
+#define fprintf(...)
 
 struct CUSTOMVERTEX
 {
@@ -20,6 +22,28 @@ const CUSTOMVERTEX g_Vertices[] = {
   {  1.0f,-1.0f, 0.0f, 0xff0000ff, },
   {  0.0f, 1.0f, 0.0f, 0xffffffff, },
 };
+
+void new_printf(const char * format, ...)
+{
+  HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+
+  char buf[512];
+  va_list ap;
+  va_start(ap, format);
+  int length = vsnprintf(buf, (sizeof (buf)), format, ap);
+  va_end(ap);
+
+  WriteConsoleA(hStdout, buf, length, NULL, NULL);
+}
+
+#ifdef printf
+#undef printf
+#endif
+#define printf(...) new_printf(__VA_ARGS__)
+#ifdef fprintf
+#undef fprintf
+#endif
+#define fprintf(f, ...) new_printf(__VA_ARGS__)
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -158,7 +182,7 @@ void Render()
   UINT registerIndex = g_TextureConstDesc.RegisterIndex;
   g_pd3dDevice->SetTexture(registerIndex, g_pTexture);
   g_pd3dDevice->SetSamplerState(registerIndex, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-  g_pd3dDevice->Setsamplerstate(registerIndex, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+  g_pd3dDevice->SetSamplerState(registerIndex, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
   g_pd3dDevice->SetSamplerState(registerIndex, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
 
   g_pd3dDevice->SetStreamSource(0, g_pVB, 0, (sizeof (CUSTOMVERTEX)));
@@ -267,16 +291,22 @@ HRESULT InitDirectSound(HWND hwnd)
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-  if (0) {
+  AttachConsole(ATTACH_PARENT_PROCESS);
+
+  if (1) {
     HRESULT hr;
     hr = InitDirectInput(hInstance);
-    if (FAILED(hr))
+    if (FAILED(hr)) {
+      printf("InitDirectInput\n");
       return 0;
+    }
 
     while (true) {
       hr = UpdateInput();
-      if (FAILED(hr))
+      if (FAILED(hr)) {
+	printf("UpdateInput\n");
         return 0;
+      }
       Sleep(100);
     }
   }
