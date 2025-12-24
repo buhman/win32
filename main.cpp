@@ -259,7 +259,8 @@ HRESULT InitDirectSound(HWND hwnd)
 
   DSBUFFERDESC desc = {};
   desc.dwSize = (sizeof (DSBUFFERDESC));
-  desc.dwFlags = DSBCAPS_CTRLPAN | DSBCAPS_CTRLVOLUME | DSBCAPS_CTRLFREQUENCY;
+  //desc.dwFlags = DSBCAPS_CTRLPAN | DSBCAPS_CTRLVOLUME | DSBCAPS_CTRLFREQUENCY;
+  desc.dwFlags = 0;
   desc.dwBufferBytes = 4 * wfx.nAvgBytesPerSec;
   desc.guid3DAlgorithm = DS3DALG_DEFAULT;
   desc.lpwfxFormat = &wfx;
@@ -284,16 +285,17 @@ HRESULT InitDirectSound(HWND hwnd)
 
   pDsb->Unlock(pBuffer, dwBufferSize, NULL, 0);
 
+  printf("Play\n");
   pDsb->Play(0, 0, DSBPLAY_LOOPING);
 
-  while (1);
+  return S_OK;
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
   AttachConsole(ATTACH_PARENT_PROCESS);
 
-  if (1) {
+  if (0) {
     HRESULT hr;
     hr = InitDirectInput(hInstance);
     if (FAILED(hr)) {
@@ -337,8 +339,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   }
 
   if (0) {
+    printf("direct sound\n");
     InitDirectSound(hwnd);
-    return 0;
   }
 
   if (!SUCCEEDED(InitDirect3D(hwnd)))
