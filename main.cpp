@@ -243,10 +243,6 @@ HRESULT InitDirectSound(HWND hwnd)
   hr = g_pDS->CreateSoundBuffer(&desc, &pDsb, NULL);
   if (FAILED(hr)) {
     fprintf(stderr, "CreateSoundBuffer\n");
-    _com_error err(hr);
-    LPCTSTR errMsg = err.ErrorMessage();
-    fprintf(stderr, "%ls\n", errMsg);
-    fflush(stderr);
     return hr;
   }
 
@@ -384,11 +380,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   pCode->Release();
   if (FAILED(res)) {
     fprintf(stderr, "CreateVertexShader\n");
-
-    _com_error err(res);
-    LPCTSTR errMsg = err.ErrorMessage();
-    fprintf(stderr, "errMsg: %ls\n", errMsg);
-    fflush(stderr);
     return res;
   }
 
@@ -414,11 +405,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   pCode->Release();
   if (FAILED(res)) {
     fprintf(stderr, "CreatePixelShader\n");
-
-    _com_error err(res);
-    LPCTSTR errMsg = err.ErrorMessage();
-    fprintf(stderr, "errMsg: %ls\n", errMsg);
-    fflush(stderr);
     return res;
   }
 
